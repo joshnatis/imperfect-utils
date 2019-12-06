@@ -158,76 +158,34 @@ int memoryFootprint(std::istream &fin)
 
 int size(const std::string &type)
 {
-	if(type == "int")
-		return sizeof(int);
-
-	if(type == "bool")
-		return sizeof(bool);
-
-	if(type == "char")
-		return sizeof(char);
-
-	if(type == "float")
-		return sizeof(float);
-
-	if(type == "double")
-		return sizeof(double);
-
+	if(type == "int") 		return sizeof(int);
+	if(type == "bool")		return sizeof(bool);
+	if(type == "char")		return sizeof(char);
+	if(type == "float")		return sizeof(float);
+	if(type == "double")	return sizeof(double);
 	if(type == "string" || type == "std::string")
 		return sizeof(std::string);
-
-//	if(type == "long") SPECIAL CASE
-//		return sizeof(long);
-
-	if(type == "size_t")
-		return sizeof(size_t);
-
-	if(type == "short")
-		return sizeof(short);
-
-	if(type == "wchar_t")
-		return sizeof(wchar_t);
-
-	if(type == "char16_t")
-		return sizeof(char16_t);
-
-	if(type == "char32_t")
-		return sizeof(char32_t);
+	if(type == "size_t") 	return sizeof(size_t);
+	if(type == "short")		return sizeof(short);
+	if(type == "wchar_t")	return sizeof(wchar_t);
+	if(type == "char16_t")	return sizeof(char16_t);
+	if(type == "char32_t")	return sizeof(char32_t);
+	//if(type == "long") SPECIAL CASE
+  	//return sizeof(long);
 
 //pointers
-
-	if(type == "int*")
-		return sizeof(int*);
-
-	if(type == "bool*")
-		return sizeof(bool*);
-
-	if(type == "char*")
-		return sizeof(char*);
-
-	if(type == "float*")
-		return sizeof(float*);
-
-	if(type == "double*")
-		return sizeof(double*);
-
-	if(type == "string*" || type == "std::string")
+	if(type == "int*")		return sizeof(int*);
+	if(type == "bool*")		return sizeof(bool*);
+	if(type == "char*")		return sizeof(char*);
+	if(type == "float*")	return sizeof(float*);
+	if(type == "double*")	return sizeof(double*);
+	if(type == "string*" || type == "std::string")	
 		return sizeof(std::string*);
-
-	if(type == "size_t*")
-		return sizeof(size_t*);
-
-	if(type == "short*")
-		return sizeof(short*);
-
-	if(type == "wchar_t*")
-		return sizeof(wchar_t*);
-
-	if(type == "char16_t*")
-		return sizeof(char16_t*);
-
-	if(type == "char32_t*")
-		return sizeof(char32_t*);
+	if(type == "size_t*")	return sizeof(size_t*);
+	if(type == "short*")	return sizeof(short*);
+	if(type == "wchar_t*")	return sizeof(wchar_t*);
+	if(type == "char16_t*")	return sizeof(char16_t*);
+	if(type == "char32_t*")	return sizeof(char32_t*);
 
 	//else return extremely negative value to notion that something went wrong
 	return -999999;
@@ -245,9 +203,8 @@ bool istype(const std::string &word)
 
 void legitcheck(const std::string &filename)
 {
-	for(int i = 0, size = filename.length(); i < size; ++i)
-		if(filename[i] == '.' && filename.substr(i + 1, 3) == "cpp")
-				return;
+	if(filename.length() > 3 && filename.substr(filename.length() - 3) == "cpp")
+		return;
 
 	std::cout << "ERROR: Not a valid C++ program, poptart man >:(\n";
 	exit(1);
