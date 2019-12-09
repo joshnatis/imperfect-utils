@@ -17,7 +17,6 @@
 #TODO - integrate all options from mpg123/ffplay into linux version
 #TODO - arrowkeys for next/back
 #TODO - mute
-#TODO - queue option
 
 
 # ========== GLOBAL STATE VARIABLES ==========
@@ -26,9 +25,10 @@
 #MUSIC_LIST - array of songs in $MUSIC_DIR
 #REQUESTED_INDEX - either SHUFFLE or number between 0 - NUM_SONGS, used as parameter for play_song (processed into SONG_INDEX)
 #SONG_INDEX - random or specified number between 0 - NUM_SONGS, used as index to access song file from MUSIC_LIST
-#EXTENSIONS - file extensions *.mp3, *.wav, etc (feel free to modify, preserving current format)
+#EXTENSIONS - file extensions present in $MUSIC_DIR
 #HISTORY - array of song indeces which have been played in current session
 #QUEUE - array of songs requested to be played next
+#PID - process id of current song playing
 # ========== /GLOBAL VARIABLES ==========
 
 
@@ -102,19 +102,23 @@ unbold() {
 stop_song() {
 	#killall mpg123 &> /dev/null
 	killall ffplay &> /dev/null
+	#killall afplay &> /dev/null
 	#ps -ef | grep ffplay | grep -v grep | awk '{print $2}' | xargs kill
-
+	#ps -ef | grep afplay | grep -v grep | awk '{print $2}' | xargs kill
 	clearscreen
 }
 
 #Finds number of songs in directory (MUSIC_DIR)
 num_songs() {
-	ls -l "$MUSIC_DIR"/$EXTENSIONS 2> /dev/null | wc -l
-	#Note: the command "2> /dev/null" redirects error messages, but leaves regular output
+	local count=0
+	for ext in "${EXTENSIONS[@]}"; do
+		count=$(($count+$(find . -name "$ext" -maxdepth 1 | wc -l)))
+	done
+	echo $count
 }
 
 is_invalid_index() {
-	if is_not_digit "$1" || [ "$1" -gt "$NUM_SONGS" ] || [ "$1" -lt 0 ]; then
+	if is_not_digit "$1" || [ "$1" -gt $(($NUM_SONGS-1)) ] || [ "$1" -lt 0 ]; then
 		return 0
 	fi		
 	return 1
@@ -138,7 +142,7 @@ setup() {
 	if [ "$#" -gt 1 ]; then
 		bold; echo "Check your arguments! Only provide an [optional] path to your music directory."; unbold
 		exit 1 
-	#If the number of args = 1, that arg must be a path to your music files
+	#If the number of args = 1
 	elif [ "$#" -eq 1 ]; then
 		#help menu
 		if [ "$1" = "-h" ]; then
@@ -147,12 +151,22 @@ setup() {
 			echo "* teapot path/to/directory/containing/audio/files"
 			exit 1
 		fi
+	 	#arg must be a path
 		#Set MUSIC_DIR to user-specified path to audio files
 		MUSIC_DIR="$1"
 	fi
 
 	#cd throws error and exits if improper path
 	cd "$MUSIC_DIR" || exit
+
+	EXTENSIONS=()
+	for ext in "*.mp3" "*.pcm" "*.wav" "*.aac" "*.ogg" "*.m4a" "*.aif" "*.flac"
+	do
+		if ls "$MUSIC_DIR"/$ext &> /dev/null; then #files exist
+   			EXTENSIONS=("${EXTENSIONS[@]}" "$ext")
+   		fi
+	done
+
 
 	#Get the number of songs in the specified directory, make sure it isn't 0
 	NUM_SONGS=$(num_songs)
@@ -161,27 +175,8 @@ setup() {
 		exit 1
 	fi
 
-	#----
-	#THE FOLLOWING ARE SOLUTIONS TO GLOBS NOT EXPANDING
-	#PREVIOUS: EXTENSIONS="*.mp3 *.pcm *.wav *.aac *.ogg *.m4a *.aif *.flac"
-
-	#SOLUTION 1
-	EXTENSIONS=()
-	ext_list=("*.mp3" "*.pcm" "*.wav" "*.aac" "*.ogg" "*.m4a" "*.aif" "*.flac")
-	for ext in "${ext_list[@]}"
-	do
-		if ls ./$ext &> /dev/null; then #files exist
-   			EXTENSIONS="$EXTENSIONS $ext"
-   		fi
-	done
-
-	#SOLUTION 2 (bash only)
-	#shopt -s nullglob
-
-	#----
-
 	#Create array of all audio files in MUSIC_DIR
-	MUSIC_LIST=( $EXTENSIONS )
+	MUSIC_LIST=( ${EXTENSIONS[@]} )
 	
 	#Will store all songs which have been played in current session
 	HISTORY=()
@@ -196,7 +191,7 @@ setup() {
 #List files/indexes for user and allow them to scroll through in less
 show_songs() {
 	#NF - Last field (File name), NR - Row number, less -S turns off word fold
-	bold; find "$MUSIC_DIR"/${ext_list[@]} 2> /dev/null | awk -F'/' '{print "["NR-1"]\t" $NF}' | less -S; unbold
+	bold; find "$MUSIC_DIR"/${EXTENSIONS[@]} 2> /dev/null | awk -F'/' '{print "["NR-1"]\t" $NF}' | less -S; unbold
 }
 
 #Set REQUESTED_INDEX to the previous song played
@@ -209,7 +204,7 @@ queue_previous() {
 download_song() {
 	if pkg_installed "youtube-dl" && pkg_installed "ffmpeg"; then
 		bold; read -r -p "Enter URL: " URL && cd "$MUSIC_DIR"; unbold
-		youtube-dl --extract-audio --audio-format mp3 --output "%(title)s.%(ext)s" "$URL" 2> /dev/null && NUM_SONGS=$(num_songs) && MUSIC_LIST=( $EXTENSIONS )
+		youtube-dl --extract-audio --audio-format mp3 --output "%(title)s.%(ext)s" "$URL" 2> /dev/null && NUM_SONGS=$(num_songs) && MUSIC_LIST=( ${EXTENSIONS[@]} )
 		
 		local status=$? #if song downloaded successfully, status is 0
 		if [ $status = 0 ]; then
@@ -247,10 +242,10 @@ display_help_menu() {
 		bold; printf "(v)iew commands"; unbold; echo " - print out condensed commands"
 		bold; printf "(h)elp"; unbold; echo " - display this help menu"
 		echo "-----"
-		bold; printf "(1)history"; unbold; echo " - display songs played in the current session"
-		bold; printf "(2)queue"; unbold; echo " - add a song to your song queue (play next)"
-		bold; printf "(3)view queue"; unbold; echo " - view the items in your queue"
-		bold; printf "(4)restart"; unbold; echo " - restart the current song"
+		bold; printf "(a)dd to queue"; unbold; echo " - add a song to your song queue (play next)"
+		bold; printf "(1)view queue"; unbold; echo " - view the items in your queue"
+		bold; printf "(2)history"; unbold; echo " - display songs played in the current session"
+		bold; printf "(3)restart"; unbold; echo " - restart the current song"
 
 		echo "------------------"
 		echo ""
@@ -258,7 +253,7 @@ display_help_menu() {
 		#if the song ends, we'll enter the choice="timeout" procedure
 		read -n 1 -s -t $(($INT_DURATION - $SECONDS)) choice
 		if [ "$choice" = "q" ] || [ "$choice" = "timeout" ]; then
-			show_music_player "$(($INT_DURATION - $SECONDS))" "1" #don't reset elapsed time
+			show_music_player
 		else
 			choice="timeout"
 		fi
@@ -266,9 +261,9 @@ display_help_menu() {
 	elif [ "$1" = "short" ]; then
 		print_ascii_art
 		bold; echo "(n)ext, (b)ack, (q)uit, (s)top, (r)epeat, (p)ick, (l)ibrary, (d)ownload, (h)elp"
-		echo "(v)iew commands, (1)history, (2)queue, (3)view queue, (4)restart"; unbold
+		echo "(v)iew commands, (a)dd to queue, (1)view queue, (2)history, (3)restart"; unbold
 		read -n 1 -s -t $(($INT_DURATION - $SECONDS)) choice
-		show_music_player "$(($INT_DURATION - $SECONDS))" "1" #don't reset elapsed time
+		show_music_player
 	fi
 }
 
@@ -324,7 +319,7 @@ pick_song() {
 toggle_repeat_mode() {
 	clearscreen
 	print_ascii_art
-	bold; echo "(q)uit repeat mode"; unbold
+	bold; echo "(q)uit, (d)isable repeat mode"; unbold
 
 	local choice="timeout"
 
@@ -333,6 +328,8 @@ toggle_repeat_mode() {
 
 		read -n 1 -s -t $(($INT_DURATION - $SECONDS)) choice #if the song ends, we'll enter the choice="timeout" procedure
 		if [ "$choice" = "q" ]; then
+			ctrl_c
+		elif [ "$choice" = "d" ]; then
 			REQUESTED_INDEX="SHUFFLE" #repeat mode off, go back to shuffle
 			return
 		elif [ "$choice" = "timeout" ]; then
@@ -348,11 +345,7 @@ toggle_repeat_mode() {
 
 show_music_player() {
 	print_ascii_art
-	if [ $# -eq 1 ]; then
-		show_options "$(($INT_DURATION - $SECONDS))" "1"
-	else
-		show_options "$INT_DURATION" "1"
-	fi
+	show_options "$1"
 }
 
 print_ascii_art() {
@@ -401,10 +394,15 @@ play_song() {
 
 	#Duration of current song in seconds (global variable)
 	FLOAT_DURATION=$(ffprobe -v error -show_entries format=duration -of default=noprint_wrappers=1:nokey=1 "$MUSIC_DIR"/"${MUSIC_LIST[$SONG_INDEX]}")
+	#FLOAT_DURATION=$(afinfo "$MUSIC_DIR"/"${MUSIC_LIST[$SONG_INDEX]}" | awk '/estimated duration/ { print $3 }')
+
 
 	#Play song file (process runs in the background)
 	#mpg123 -q --no-gapless -D 0.5 --no-seekbuffer "$MUSIC_DIR"/"${MUSIC_LIST[$SONG_INDEX]}" &
 	ffplay -nodisp -loglevel panic "$MUSIC_DIR"/"${MUSIC_LIST[$SONG_INDEX]}" &
+	#afplay "$MUSIC_DIR"/"${MUSIC_LIST[$SONG_INDEX]}" &
+
+	PID=$!
 
 	#if not replaying previous song
 	if not_replay; then
@@ -421,9 +419,12 @@ show_options() {
 
 	echo "(n)ext, (b)ack, (q)uit, (p)ick, (l)ibrary, (s)top, (h)elp"
 	
-	#we only want to set seconds to 0 when we start playing a new song ($2 will be "1" if song is already playing)
-	if [ "$2" == "" ]; then
+	#we only want to set seconds to 0 when we start playing a new song ($2 will be "reset")
+	if [ "$1" = "reset" ]; then
    		SECONDS=0
+   	#there is a parameter ($1) specifying the number of seconds already elapsed, set $SECONDS to that
+   	elif [ -n "$1" ]; then
+   		SECONDS=$1
    	fi
 
 	read -n 1 -s -t $(($INT_DURATION - $SECONDS)) option
@@ -453,9 +454,9 @@ show_options() {
 		stop_song
 
 	#FOR DEBUGGING - show history
-	elif [ "$option" = "1" ]; then
-		echo "Length: ${#HISTORY[@]}"
+	elif [ "$option" = "2" ]; then
 		printf '%s ' "${HISTORY[@]}"
+		printf "(Length: %s)" "${#HISTORY[@]}"
 		read -t 3
 		show_music_player
 
@@ -470,37 +471,41 @@ show_options() {
 
 	#pause/resume
 	elif [ "$option" = "s" ]; then
-		kill -TSTP $! #gentle terminal stop signal (ctrl z) -- reversable
-		let remaining=$( echo $SECONDS )
+		kill -TSTP $PID #gentle terminal stop signal (ctrl z)
+		local elapsed=$SECONDS #capture seconds elapsed before pause button pressed
+		
 		clearscreen
 		print_ascii_art
 		bold; echo "(q)uit, (s)tart"; unbold
+		
 		read -n 1 resume
 		if [ "$resume" = "s" ]; then
-			kill -CONT $! #resume process
+			kill -CONT $PID #resume process
 		elif [ "resume" = "quit" ]; then
 			ctrl_c
 		fi
-		show_music_player "$(($INT_DURATION  - $remaining))" #don't reset elapsed time
+		show_music_player "$elapsed" #pass in seconds elapsed (don't reset elapsed time)
 
 	#loop mode
 	elif [ "$option" = "r" ]; then
 		toggle_repeat_mode #holds user in this function until they exit repeat mode
-		show_music_player "$(($INT_DURATION - $SECONDS))" "1" #don't reset elapsed time
+		show_music_player
 
 	#restart current track
-	elif [ "$option" = "k" ]; then
+	elif [ "$option" = "3" ]; then
 		stop_song
 		play_song "$SONG_INDEX"
 		show_options
 
 	#add to queue
-	elif [ "$option" = "2" ]; then
+	elif [ "$option" = "a" ]; then
 		pick_song "Queue" #adds song index to queue/play next
-		show_music_player "$(($INT_DURATION - $SECONDS))" "1" #don't reset elapsed time
+		show_music_player
 
-	elif [ "$option" = "3" ]; then
+	elif [ "$option" = "1" ]; then
+		printf "QUEUE: "
 		printf '%s ' "${QUEUE[@]}"
+		printf "<-- next!"
 		read -t 4
 		show_music_player
 
@@ -534,5 +539,5 @@ do
 	play_song "$REQUESTED_INDEX"
 	INT_DURATION=$( printf "%.0f" $FLOAT_DURATION ) #converts parsed floating point value to integer for bash
 	#Show options for INT_DURATION seconds (entirety of song)
-	show_options "$INT_DURATION"
+	show_options "reset" #resets $SECONDS elapsed to 0
 done
