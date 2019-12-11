@@ -17,7 +17,7 @@ int snake_row = 0;
 
 int points = 0; //total apples found
 int avg = -1; //average moves to get apple throughout session
-int moves = 0; //total user cued moves (e.g wasd is 4 moves)
+int moves = 0; //total user queued moves (e.g wasd is 4 moves)
 
 int apple_row = 0;
 int apple_col = 0;
@@ -47,6 +47,7 @@ int main()
 		clearScreen();
 		++moves; //every combination of letters is a move, not every letter
 	}
+	cout << "GAME OVER!\nAverage Moves: " << avg << " | Total points: " << points << endl;
 	return 0;
 }
 
@@ -91,28 +92,32 @@ void moveSnake(char dir)
 	if(dir == 'w')
 	{	
 		MAP[snake_row][snake_col] = ' ';
-		MAP[snake_row - 1][snake_col] = '*';
+		if(snake_row - 1 >= 0)
+			MAP[snake_row - 1][snake_col] = '*';
 		snake_row--;
 	}
 
 	else if(dir == 's')
 	{
 		MAP[snake_row][snake_col] = ' ';
-		MAP[snake_row + 1][snake_col] = '*';
+		if(snake_row + 1 <= VISIBLE_ROWS)
+			MAP[snake_row + 1][snake_col] = '*';
 		snake_row++;
 	}
 
 	else if(dir == 'a')
 	{
 		MAP[snake_row][snake_col] = ' ';
-		MAP[snake_row][snake_col - 1] = '*';
+		if(snake_col >= 0)
+			MAP[snake_row][snake_col - 1] = '*';
 		snake_col--;
 	}
 	
 	else if(dir == 'd')
 	{
 		MAP[snake_row][snake_col] = ' ';
-		MAP[snake_row][snake_col + 1] = '*';
+		if(snake_col <= VISIBLE_COLS)
+			MAP[snake_row][snake_col + 1] = '*';
        	snake_col++;
 	}
 
@@ -124,10 +129,15 @@ void moveSnake(char dir)
 		else
 			avg = (avg + moves)/2; //average previous avg and current avg
 		
+		if(moves == 1)
+			points+=100;
+		else if(moves == 2)
+			points+=50;
+		else
+			++points;
+
 		//reset state counters
 		moves = 0;
-
-		points++;
 
 		MAP[apple_row][apple_col] = ' ';
 		MAP[apple_row][apple_col] = '*';
