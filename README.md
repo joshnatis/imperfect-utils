@@ -4,7 +4,7 @@ I'm on a quest to make a suite of random command line utilities. Thus far they h
 ## Table of Contents
 
 ### General Tools
-`cpp-repl.sh` - Simulates a "read, eval, print" loop for C++
+`repl.sh` - Simulates a "read, eval, print" loop (currently supports C, C++, and Java)
 
 `music-player.sh` - A music player (Requires FFMPEG, awk)
 
