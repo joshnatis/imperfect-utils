@@ -10,12 +10,14 @@ ctrl_c()
 
 selectLanguage()
 {
-	if [ "$1" = "java" ] || [ "$1" = "Java" ] || [ "$1" = "JAVA" ]; then
+	if [ "$1" = "java" ] || [ "$1" = "Java" ]; then
 		LANGUAGE="java"
 	elif [ "$1" = "C" ] || [ "$1" = "c" ]; then
 		LANGUAGE="c"
-	elif [ "$1" = "c++" ] || [ "$1" = "C++" ] || [ "$1" = "cpp" ] || [ "$1" = "Cpp" ] || [ "$1" = "CPP" ]; then
+	elif [ "$1" = "c++" ] || [ "$1" = "C++" ] || [ "$1" = "cpp" ] || [ "$1" = "Cpp" ]; then
 		LANGUAGE="c++"
+	elif [ "$1" = "python" ] || [ "$1" = "py" ]; then
+		LANGUAGE="py"
 	else
 		return 1
 	fi
@@ -31,7 +33,7 @@ print_commands()
 
 	if [ "$LANGUAGE" = "c++" ] || [ "$LANGUAGE" = "c" ]; then
 		echo "INCLUDE - insert #include directive"
-	elif [ "$LANGUAGE" = "java" ]; then
+	elif [ "$LANGUAGE" = "java" ] || [ "$LANGUAGE" = "py" ]; then
 		echo "IMPORT - insert import directive"
 	fi
 
@@ -47,22 +49,23 @@ start()
 
 	mkdir ."$LANGUAGE"_repl && 
 	cd ."$LANGUAGE"_repl &&
+	touch source_code &&
 
 	if [ "$LANGUAGE" = "c++" ]; then
-		touch source_code &&
 		echo "#include <iostream>" > source_code
 		echo "using namespace std; int main(){" >> source_code
 
 	elif [ "$LANGUAGE" = "c" ]; then
-		touch source_code &&
 		echo "#include <stdio.h>" > source_code
 		echo "int main(){" >> source_code
 
 	elif [ "$LANGUAGE" = "java" ]; then
-		touch source_code &&
 		echo "import java.util.*;" > source_code
 		echo "public class execute { " >> source_code
 		echo "public static void main (String[] args){" >> source_code
+
+	elif [ "$LANGUAGE" = "py" ]; then
+		: #no boilerplate
 
 	fi
 }
@@ -98,6 +101,9 @@ compile_and_run()
 			clean
 		fi
 
+	elif [ "$LANGUAGE" = "py" ]; then
+		python3 execute.py
+
 	fi
 }
 
@@ -125,7 +131,7 @@ execute_command()
 	elif [ "$1" = "INCLUDE" ] || [ "$1" = "IMPORT" ]; then
 		 if [ "$LANGUAGE" = "c" ] || [ "$LANGUAGE" = "c++" ]; then
 		 	read -r -p "Type your include directive: " inc
-		elif [ "$LANGUAGE" = "java" ]; then
+		elif [ "$LANGUAGE" = "java" ] || [ "$LANGUAGE" = "py" ]; then
 			read -r -p "Type your import directive: " inc
 		fi
 
@@ -159,6 +165,9 @@ clean()
 		echo "import java.util.*;" > source_code
 		echo "public class execute { " >> source_code
 		echo "public static void main (String[] args){" >> source_code
+
+	elif [ "$LANGUAGE" = "py" ]; then
+		echo "" > source_code
 
 	fi
 }
