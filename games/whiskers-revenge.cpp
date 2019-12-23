@@ -16,7 +16,7 @@ int snake_col = 0;
 int snake_row = 0;
 
 int points = 0; //total apples found
-int avg = -1; //average moves to get apple throughout session
+int avg = 0; //average moves to get apple throughout session
 int moves = 0; //total user queued moves (e.g wasd is 4 moves)
 
 int apple_row = 0;
