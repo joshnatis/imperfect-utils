@@ -15,7 +15,7 @@ selectLanguage()
 	elif [ "$1" = "C" ] || [ "$1" = "c" ]; then
 		LANGUAGE="c"
 	elif [ "$1" = "c++" ] || [ "$1" = "C++" ] || [ "$1" = "cpp" ] || [ "$1" = "Cpp" ]; then
-		LANGUAGE="c++"
+		LANGUAGE="cpp"
 	elif [ "$1" = "python" ] || [ "$1" = "py" ]; then
 		LANGUAGE="py"
 	else
@@ -31,7 +31,7 @@ print_commands()
 	echo "FREEWRITE - turn off repl"
 	echo "REPL - turn on repl"
 
-	if [ "$LANGUAGE" = "c++" ] || [ "$LANGUAGE" = "c" ]; then
+	if [ "$LANGUAGE" = "cpp" ] || [ "$LANGUAGE" = "c" ]; then
 		echo "INCLUDE - insert #include directive"
 	elif [ "$LANGUAGE" = "java" ] || [ "$LANGUAGE" = "py" ]; then
 		echo "IMPORT - insert import directive"
@@ -51,7 +51,7 @@ start()
 	cd ."$LANGUAGE"_repl &&
 	touch source_code &&
 
-	if [ "$LANGUAGE" = "c++" ]; then
+	if [ "$LANGUAGE" = "cpp" ]; then
 		echo "#include <iostream>" > source_code
 		echo "using namespace std; int main(){" >> source_code
 
@@ -129,7 +129,7 @@ execute_command()
 		:
 
 	elif [ "$1" = "INCLUDE" ] || [ "$1" = "IMPORT" ]; then
-		 if [ "$LANGUAGE" = "c" ] || [ "$LANGUAGE" = "c++" ]; then
+		 if [ "$LANGUAGE" = "c" ] || [ "$LANGUAGE" = "cpp" ]; then
 		 	read -r -p "Type your include directive: " inc
 		elif [ "$LANGUAGE" = "java" ] || [ "$LANGUAGE" = "py" ]; then
 			read -r -p "Type your import directive: " inc
@@ -153,7 +153,7 @@ execute_command()
 
 clean()
 {
-	if [ "$LANGUAGE" = "c++" ]; then
+	if [ "$LANGUAGE" = "cpp" ]; then
 		echo "#include <iostream>" > source_code
 		echo "using namespace std; int main(){ " >> source_code
 
