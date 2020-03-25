@@ -145,7 +145,7 @@ setup() {
 	#If the number of args = 1
 	elif [ "$#" -eq 1 ]; then
 		#help menu
-		if [ "$1" = "-h" ]; then
+		if [ "$1" = "-h" ] || [ "$1" = "--help" ]; then
 			echo "Usage:"
 			echo "* teapot"
 			echo "* teapot path/to/directory/containing/audio/files"
@@ -223,7 +223,6 @@ download_song() {
 }
 
 display_help_menu() {
-	local choice="timeout"
 
 	if [ "$1" = "full" ]; then
 		echo "------------------"
@@ -234,6 +233,7 @@ display_help_menu() {
 		bold; printf "(q)uit"; unbold; echo " - exit the music player" 
 		bold; printf "(s)top"; unbold; echo " - pause song"
 		bold; printf "(r)epeat"; unbold; echo " - loop the current song"
+		bold; printf "(m)ute"; unbold; echo " - mute song"
 		echo "-----"
 		bold; printf "(p)ick"; unbold; echo " - pick a song to play from your library"
 		bold; printf "(l)ibrary"; unbold; echo " - display the songs in your library"
@@ -248,20 +248,14 @@ display_help_menu() {
 		bold; printf "(3)restart"; unbold; echo " - restart the current song"
 
 		echo "------------------"
-		echo ""
 		echo "(q)uit help menu";
-		#if the song ends, we'll enter the choice="timeout" procedure
 		read -n 1 -s -t $(($INT_DURATION - $SECONDS)) choice
-		if [ "$choice" = "q" ] || [ "$choice" = "timeout" ]; then
-			show_music_player
-		else
-			choice="timeout"
-		fi
+		show_music_player
 
 	elif [ "$1" = "short" ]; then
 		print_ascii_art
 		bold; echo "(n)ext, (b)ack, (q)uit, (s)top, (r)epeat, (p)ick, (l)ibrary, (d)ownload, (h)elp"
-		echo "(v)iew commands, (a)dd to queue, (1)view queue, (2)history, (3)restart"; unbold
+		echo "(m)ute, (v)iew commands, (a)dd to queue, (1)view queue, (2)history, (3)restart"; unbold
 		read -n 1 -s -t $(($INT_DURATION - $SECONDS)) choice
 		show_music_player
 	fi
@@ -478,13 +472,42 @@ show_options() {
 		print_ascii_art
 		bold; echo "(q)uit, (s)tart"; unbold
 		
-		read -n 1 resume
-		if [ "$resume" = "s" ]; then
-			kill -CONT $PID #resume process
-		elif [ "$resume" = "quit" ]; then
-			ctrl_c
-		fi
+		local resume=""
+		while [ ! "$resume" = "s" ] && [ ! "$resume" = "q" ]
+		do
+			read -s -n 1 resume
+			if [ "$resume" = "s" ]; then
+				kill -CONT $PID #resume process
+			elif [ "$resume" = "q" ]; then
+				ctrl_c
+			fi
+		done
+
 		show_music_player "$elapsed" #pass in seconds elapsed (don't reset elapsed time)
+
+	#mute
+	elif [ "$option" = "m" ]; then
+		kill $PID
+
+		clearscreen
+		print_ascii_art
+		bold; echo "(q)uit, un(m)ute"; unbold
+
+		local unmute=""
+		while [ ! "$unmute" = "m" ] && [ ! "$unmute" = "q" ] #input validation lol
+		do
+			read -s -n 1 unmute
+			if [ "$unmute" = "m" ]; then
+				#seek forward $SECONDS seconds, start playing from there
+				#$SECONDS has been incrementing while song was muted
+				ffplay -ss $SECONDS -nodisp -loglevel panic "$MUSIC_DIR"/"${MUSIC_LIST[$SONG_INDEX]}" &
+				PID=$!
+			elif [ "$unmute" = "q" ]; then
+				ctrl_c
+			fi
+		done
+
+		show_music_player "$SECONDS"
 
 	#loop mode
 	elif [ "$option" = "r" ]; then
